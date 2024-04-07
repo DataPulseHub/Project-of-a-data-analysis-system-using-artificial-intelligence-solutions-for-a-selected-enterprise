@@ -1,0 +1,234 @@
+---
+title: "import_danych"
+author: "Natalia Wilczek"
+date: "2023-03-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Wczytanie bibliotek
+
+```{r}
+library(tidyverse)
+library(data.table)
+```
+
+Wczytanie plików
+
+```{r}
+# PART 1
+my_data1 <- read.csv2("/pracadyplomowa/daneod2013do2020/2013-07 - Citi Bike trip data.csv", header = TRUE, sep = ",")
+my_data2 <- read.csv2("/pracadyplomowa/daneod2013do2020/2013-08 - Citi Bike trip data.csv", header = TRUE, sep = ",")
+my_data3 <- read.csv2("/pracadyplomowa/daneod2013do2020/2013-09 - Citi Bike trip data.csv", header = TRUE, sep = ",")
+my_data4 <- read.csv2("/pracadyplomowa/daneod2013do2020/2013-10 - Citi Bike trip data.csv", header = TRUE, sep = ",")
+my_data5 <- read.csv2("/pracadyplomowa/daneod2013do2020/2013-11 - Citi Bike trip data.csv", header = TRUE, sep = ",")
+my_data6 <- read.csv2("/pracadyplomowa/daneod2013do2020/2013-12 - Citi Bike trip data.csv", header = TRUE, sep = ",")
+my_data7 <- read.csv2("/pracadyplomowa/daneod2013do2020/2014-01 - Citi Bike trip data.csv", header = TRUE, sep = ",")
+my_data8 <- read.csv2("/pracadyplomowa/daneod2013do2020/2014-02 - Citi Bike trip data.csv", header = TRUE, sep = ",")
+my_data9 <- read.csv2("/pracadyplomowa/daneod2013do2020/2014-03 - Citi Bike trip data.csv", header = TRUE, sep = ",")
+my_data10 <- read.csv2("/pracadyplomowa/daneod2013do2020/2014-04 - Citi Bike trip data.csv", header = TRUE, sep = ",")
+my_data11 <- read.csv2("/pracadyplomowa/daneod2013do2020/2014-05 - Citi Bike trip data.csv", header = TRUE, sep = ",")
+my_data12 <- read.csv2("/pracadyplomowa/daneod2013do2020/2014-06 - Citi Bike trip data.csv", header = TRUE, sep = ",")
+my_data13 <- read.csv2("/pracadyplomowa/daneod2013do2020/2014-07 - Citi Bike trip data.csv", header = TRUE, sep = ",")
+my_data14 <- read.csv2("/pracadyplomowa/daneod2013do2020/2014-08 - Citi Bike trip data.csv", header = TRUE, sep = ",")
+my_data15 <- read.csv2("/pracadyplomowa/daneod2013do2020/201409-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data16 <- read.csv2("/pracadyplomowa/daneod2013do2020/201410-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data17 <- read.csv2("/pracadyplomowa/daneod2013do2020/201411-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data18 <- read.csv2("/pracadyplomowa/daneod2013do2020/201412-citibike-tripdata.csv", header = TRUE, sep = ",")
+
+merged_data <- rbind(my_data1,my_data2,my_data3,my_data4,my_data5,my_data6,my_data7,my_data8,my_data9,my_data10,my_data11,my_data12,my_data13,my_data14,my_data15,my_data16,my_data17,my_data18)
+
+colnames(merged_data) <- c("tripduration", "starttime", "stoptime", "start station id", "start station name", "start station latitude", "start station longitude", "end station id", "end station name", "end station latitude", "end station longitude", "bikeid", "usertype", "birth year", "gender")
+```
+
+```{r}
+# Wylosowanie próbki badawczej 
+sample_data0 <- merged_data %>% 
+  sample_n(size = nrow(merged_data) * 0.1, replace = FALSE)
+
+# Zapisanie próbki badawczej
+write.csv2(sample_data0, "proba1.csv")
+```
+
+```{r}
+# PART 2
+my_data18 <- read.csv2("/pracadyplomowa/daneod2013do2020/201501-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data19 <- read.csv2("/pracadyplomowa/daneod2013do2020/201502-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data20 <- read.csv2("/pracadyplomowa/daneod2013do2020/201503-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data21 <- read.csv2("/pracadyplomowa/daneod2013do2020/201504-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data22 <- read.csv2("/pracadyplomowa/daneod2013do2020/201505-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data23 <- read.csv2("/pracadyplomowa/daneod2013do2020/201506-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data24 <- read.csv2("/pracadyplomowa/daneod2013do2020/201507-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data25 <- read.csv2("/pracadyplomowa/daneod2013do2020/201508-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data26 <- read.csv2("/pracadyplomowa/daneod2013do2020/201509-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data27 <- read.csv2("/pracadyplomowa/daneod2013do2020/201510-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data28 <- read.csv2("/pracadyplomowa/daneod2013do2020/201511-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data29 <- read.csv2("/pracadyplomowa/daneod2013do2020/201512-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data30 <- read.csv2("/pracadyplomowa/daneod2013do2020/201601-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data31 <- read.csv2("/pracadyplomowa/daneod2013do2020/201602-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data32 <- read.csv2("/pracadyplomowa/daneod2013do2020/201603-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data33 <- read.csv2("/pracadyplomowa/daneod2013do2020/201604-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data34 <- read.csv2("/pracadyplomowa/daneod2013do2020/201605-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data35 <- read.csv2("/pracadyplomowa/daneod2013do2020/201606-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data36 <- read.csv2("/pracadyplomowa/daneod2013do2020/201607-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data37 <- read.csv2("/pracadyplomowa/daneod2013do2020/201608-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data38 <- read.csv2("/pracadyplomowa/daneod2013do2020/201609-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data39 <- read.csv2("/pracadyplomowa/daneod2013do2020/201610-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data40 <- read.csv2("/pracadyplomowa/daneod2013do2020/201611-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data41 <- read.csv2("/pracadyplomowa/daneod2013do2020/201612-citibike-tripdata.csv", header = TRUE, sep = ",")
+
+merged_data2 <- rbind(my_data18, my_data19, my_data20, my_data21, my_data22, my_data23, my_data24, my_data25, my_data26, my_data27, my_data28, my_data29, my_data30,my_data31, my_data32, my_data33, my_data34, my_data35, my_data36, my_data37, my_data38)
+
+colnames(merged_data2) <- c("tripduration", "starttime", "stoptime", "start station id", "start station name", "start station latitude", "start station longitude", "end station id", "end station name", "end station latitude", "end station longitude", "bikeid", "usertype", "birth year", "gender")
+
+merged_data3 <- rbind(my_data39, my_data40,my_data41)
+
+colnames(merged_data3) <- c("tripduration", "starttime", "stoptime", "start station id", "start station name", "start station latitude", "start station longitude", "end station id", "end station name", "end station latitude", "end station longitude", "bikeid", "usertype", "birth year", "gender")
+```
+
+```{r}
+# Wylosowanie próbki badawczej 
+sample_data2 <- merged_data2 %>% 
+  sample_n(size = nrow(merged_data2) * 0.1, replace = FALSE)
+
+# Zapisanie próbki badawczej
+write.csv2(sample_data2, "proba2.csv")
+
+# Wylosowanie próbki badawczej 
+sample_data3 <- merged_data3 %>% 
+  sample_n(size = nrow(merged_data3) * 0.1, replace = FALSE)
+
+# Zapisanie próbki badawczej
+write.csv2(sample_data3, "proba3.csv")
+```
+
+```{r}
+# PART 3
+my_data42 <- read.csv2("/pracadyplomowa/daneod2013do2020/201701-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data43 <- read.csv2("/pracadyplomowa/daneod2013do2020/201702-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data44 <- read.csv2("/pracadyplomowa/daneod2013do2020/201703-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data45 <- read.csv2("/pracadyplomowa/daneod2013do2020/201704-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data46 <- read.csv2("/pracadyplomowa/daneod2013do2020/201705-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data47 <- read.csv2("/pracadyplomowa/daneod2013do2020/201706-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data48 <- read.csv2("/pracadyplomowa/daneod2013do2020/201707-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data49 <- read.csv2("/pracadyplomowa/daneod2013do2020/201708-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data50 <- read.csv2("/pracadyplomowa/daneod2013do2020/201709-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data51 <- read.csv2("/pracadyplomowa/daneod2013do2020/201710-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data52 <- read.csv2("/pracadyplomowa/daneod2013do2020/201711-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data53 <- read.csv2("/pracadyplomowa/daneod2013do2020/201712-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data54 <- read.csv2("/pracadyplomowa/daneod2013do2020/201801-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data55 <- read.csv2("/pracadyplomowa/daneod2013do2020/201802-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data56 <- read.csv2("/pracadyplomowa/daneod2013do2020/201803-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data57 <- read.csv2("/pracadyplomowa/daneod2013do2020/201804-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data58 <- read.csv2("/pracadyplomowa/daneod2013do2020/201805-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data59 <- read.csv2("/pracadyplomowa/daneod2013do2020/201806-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data60 <- read.csv2("/pracadyplomowa/daneod2013do2020/201807-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data61 <- read.csv2("/pracadyplomowa/daneod2013do2020/201808-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data62 <- read.csv2("/pracadyplomowa/daneod2013do2020/201809-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data63 <- read.csv2("/pracadyplomowa/daneod2013do2020/201810-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data64 <- read.csv2("/pracadyplomowa/daneod2013do2020/201811-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data65 <- read.csv2("/pracadyplomowa/daneod2013do2020/201812-citibike-tripdata.csv", header = TRUE, sep = ",")
+
+merged_data4 <- rbind(my_data42, my_data43, my_data44)
+
+merged_data5 <- rbind(my_data45, my_data46, my_data47, my_data48, my_data49, my_data50, my_data51, my_data52, my_data53, my_data54, my_data55, my_data56, my_data57, my_data58, my_data59, my_data60, my_data61, my_data62, my_data63, my_data64, my_data65)
+
+
+colnames(merged_data4) <- c("tripduration", "starttime", "stoptime", "start station id", "start station name", "start station latitude", "start station longitude", "end station id", "end station name", "end station latitude", "end station longitude", "bikeid", "usertype", "birth year", "gender")
+
+colnames(merged_data5) <- c("tripduration", "starttime", "stoptime", "start station id", "start station name", "start station latitude", "start station longitude", "end station id", "end station name", "end station latitude", "end station longitude", "bikeid", "usertype", "birth year", "gender")
+```
+
+```{r}
+# Wylosowanie próbki badawczej 
+sample_data4 <- merged_data4 %>% 
+  sample_n(size = nrow(merged_data4) * 0.1, replace = FALSE)
+
+# Zapisanie próbki badawczej
+write.csv2(sample_data4, "proba4.csv")
+
+# Wylosowanie próbki badawczej 
+sample_data5 <- merged_data5 %>% 
+  sample_n(size = nrow(merged_data5) * 0.1, replace = FALSE)
+
+# Zapisanie próbki badawczej
+write.csv2(sample_data5, "proba5.csv")
+```
+
+```{r}
+# PART 4
+my_data66 <- read.csv2("/pracadyplomowa/daneod2013do2020/201901-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data67 <- read.csv2("/pracadyplomowa/daneod2013do2020/201902-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data68 <- read.csv2("/pracadyplomowa/daneod2013do2020/201903-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data69 <- read.csv2("/pracadyplomowa/daneod2013do2020/201904-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data70 <- read.csv2("/pracadyplomowa/daneod2013do2020/201905-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data71 <- read.csv2("/pracadyplomowa/daneod2013do2020/201906-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data72 <- read.csv2("/pracadyplomowa/daneod2013do2020/201907-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data73 <- read.csv2("/pracadyplomowa/daneod2013do2020/201908-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data74 <- read.csv2("/pracadyplomowa/daneod2013do2020/201909-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data75 <- read.csv2("/pracadyplomowa/daneod2013do2020/201910-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data76 <- read.csv2("/pracadyplomowa/daneod2013do2020/201911-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data77 <- read.csv2("/pracadyplomowa/daneod2013do2020/201912-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data78 <- read.csv2("/pracadyplomowa/daneod2013do2020/202001-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data79 <- read.csv2("/pracadyplomowa/daneod2013do2020/202002-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data80 <- read.csv2("/pracadyplomowa/daneod2013do2020/202003-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data81 <- read.csv2("/pracadyplomowa/daneod2013do2020/202004-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data82 <- read.csv2("/pracadyplomowa/daneod2013do2020/202005-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data83 <- read.csv2("/pracadyplomowa/daneod2013do2020/202006-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data84 <- read.csv2("/pracadyplomowa/daneod2013do2020/202007-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data85 <- read.csv2("/pracadyplomowa/daneod2013do2020/202008-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data86 <- read.csv2("/pracadyplomowa/daneod2013do2020/202009-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data87 <- read.csv2("/pracadyplomowa/daneod2013do2020/202010-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data88 <- read.csv2("/pracadyplomowa/daneod2013do2020/202011-citibike-tripdata.csv", header = TRUE, sep = ",")
+my_data89 <- read.csv2("/pracadyplomowa/daneod2013do2020/202012-citibike-tripdata.csv", header = TRUE, sep = ",")
+
+merged_data6 <- rbind(my_data66, my_data67, my_data68, my_data69, my_data70, my_data71, my_data72, my_data73, my_data74, my_data75, my_data76, my_data77, my_data78)
+
+colnames(merged_data6) <- c("tripduration", "starttime", "stoptime", "start station id", "start station name", "start station latitude", "start station longitude", "end station id", "end station name", "end station latitude", "end station longitude", "bikeid", "usertype", "birth year", "gender")
+
+merged_data7 <- rbind(my_data79, my_data80, my_data81, my_data82, my_data83, my_data84, my_data85, my_data86, my_data87, my_data88, my_data89)
+
+colnames(merged_data7) <- c("tripduration", "starttime", "stoptime", "start station id", "start station name", "start station latitude", "start station longitude", "end station id", "end station name", "end station latitude", "end station longitude", "bikeid", "usertype", "birth year", "gender")
+```
+
+```{r}
+# Wylosowanie próbki badawczej 
+sample_data6 <- merged_data6 %>% 
+  sample_n(size = nrow(merged_data6) * 0.1, replace = FALSE)
+
+# Zapisanie próbki badawczej
+write.csv2(sample_data6, "proba6.csv")
+
+# Wylosowanie próbki badawczej 
+sample_data7 <- merged_data7 %>% 
+  sample_n(size = nrow(merged_data7) * 0.1, replace = FALSE)
+
+# Zapisanie próbki badawczej
+write.csv2(sample_data7, "proba7.csv")
+```
+
+```{r}
+proba1 <- read.csv2("/pracadyplomowa/PROBKI/proba1.csv", header = TRUE)
+proba2 <- read.csv2("/pracadyplomowa/PROBKI/proba2.csv", header = TRUE)
+proba3 <- read.csv2("/pracadyplomowa/PROBKI/proba3.csv", header = TRUE)
+proba4 <- read.csv2("/pracadyplomowa/PROBKI/proba4.csv", header = TRUE)
+proba5 <- read.csv2("/pracadyplomowa/PROBKI/proba5.csv", header = TRUE)
+proba6 <- read.csv2("/pracadyplomowa/PROBKI/proba6.csv", header = TRUE)
+proba7 <- read.csv2("/pracadyplomowa/PROBKI/proba7.csv", header = TRUE)
+
+# Końcowa próbka badawcza 
+
+# Łączenie danych
+merged_data00 <- rbind(proba1, proba2, proba3, proba4, proba5, proba6, proba7)
+
+# Losowanie próbki
+rozmiar_probki <- 1000000 
+probka_badawcza <- merged_data00 %>% sample_n(size = rozmiar_probki, replace = FALSE)
+
+
+write.csv2(probka_badawcza, "proba.csv")
+
+```

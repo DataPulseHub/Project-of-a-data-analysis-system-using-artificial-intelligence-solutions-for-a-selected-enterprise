@@ -1,0 +1,229 @@
+---
+title: "EKSPLORACJA"
+subtitle: "CityBike"
+author:
+- name: Natalia Wilczek
+  affiliation: Politechnika Lubelska
+output:
+  rmdformats::downcute:
+    toc_depth: 4
+    highlight: espresso
+    theme: darkly
+    lightbox: false
+    self_contained: true
+    thumbnails: false
+    gallery: false
+    number_sections: true
+    code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#Wczytanie bibliotek 
+
+library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(data.table)
+library(kableExtra)
+library(htmltools)
+library(mice)
+library(caret)
+library(knitr)
+library(ggplot2)
+library(lubridate)
+library(DataExplorer)
+library(DMwR2) 
+library(naniar)
+library(imputeTS)
+```
+
+**Ilość obserwacji w próbkach**
+
+-   Łączenie wszystkich zaimportowanych danych jest: **110.873.575**
+
+-   Łączenie wszystkich obiektów w próbkach jest: **13.044.554**
+
+-   Łącznie wszystkich obiektów w próbce końcowej jest: **1.000.000**
+
+```{r}
+probka <- c("próbka 1","próbka 2","próbka 3","próbka 4","próbka 5","próbka 6", "próbka 7")
+ilosc<- c(1311840, 2020061, 358300, 224598, 3166700, 2179229, 1826626)
+
+ll <- data.frame(probka,ilosc)
+
+DT::datatable(head(ll,30), extensions = c('Responsive'))
+```
+
+# Eksploracja danych
+
+```{r}
+# Wczytanie danych 
+df <- read.csv2("/pracadyplomowa/DANE/proba.csv", header = TRUE)
+
+df0 <- slice(df, 1:100)
+show(df0)
+DT::datatable(head(df0,100), extensions = c('Responsive'))
+
+```
+
+```{r}
+str(df)
+```
+
+```{r}
+# Zmiana nazwy kolumny 
+names(df)[names(df) == "usertype"] <- "user.type"
+names(df)[names(df) == "bikeid"] <- "bike.id"
+names(df)[names(df) == "end.station.id"] <- "stop.station.id"
+names(df)[names(df) == "end.station.name"] <- "stop.station.name"
+names(df)[names(df) == "end.station.latitude"] <- "stop.station.latitude"
+names(df)[names(df) == "end.station.longitude"] <- "stop.station.longitude"
+
+
+names <- c("id", "Id użytkownika",
+           "trip.duration", "Czas trwania podróży (sekundy)",
+           "date", "Data",
+           "start.time", "Godzina rozpoczęcia podróży",
+           "stop.time", "Godzina zakończenia podróży",
+           "start.station.id", "Identyfikator stacji początkowej",
+           "start.station.name","Nazwa stacji początkowej"
+           ,"start.station.latitude","Szerokość geograficzna stacji początkowej", 
+           "start.station.longitude","Długość geograficzna stacji początkowej", 
+           "stop.station.id","Identyfikator stacji końcowej",
+           "stop.station.name", "Nazwa stacji końcowej" ,
+           "stop.station.latitude","Szerokość geograficzna stacji początkowej",  
+           "stop.station.longitude","Długość geograficzna stacji początkowej", 
+           "bikeid", "Identyfikator roweru",
+           "usertype","Typ użytkowanika (klient = użytkownik z karnetem 24-godzinnym lub 3-dniowym; subskrybent = członek roczny)", 
+           "birth.year","Rok urodzenia", 
+           "gender", "Płeć (0=nieznana; 1=mężczyzna; 2=kobieta)")
+
+
+tab <- matrix(names,ncol = 2,byrow = TRUE) %>%
+  as_tibble()
+ 
+names(tab) <- c('zmienna','opis')
+
+
+
+DT::datatable(head(tab,100), extensions = c('Responsive'))
+
+
+
+```
+
+## 1.1 Zmiana formatu danych
+
+```{r}
+df$start.station.latitude <- as.numeric(df$start.station.latitude)
+df$start.station.longitude <- as.numeric(df$start.station.longitude)
+df$start.station.id <- as.integer(df$start.station.id)
+df$stop.station.latitude <- as.numeric(df$stop.station.latitude)
+df$stop.station.longitude <- as.numeric(df$stop.station.longitude)
+df$stop.station.id <- as.integer(df$stop.station.id)
+df$trip.duration <- as.numeric(df$trip.duration)
+df$gender <- as.numeric(df$gender)
+df$stop.time <- as.POSIXct(df$stop.time, format = "%d.%m.%Y %H:%M")
+df$start.time <- as.POSIXct(df$start.time, format = "%d.%m.%Y %H:%M")
+```
+
+## 1.2 Zidentyfikowanie i uzupełnienie braków danych
+
+```{r}
+# Ilość braków danych 
+sum(is.na(df)) # 156402
+
+# Procent braków danych w zbiorze 
+missing_percentages <- colMeans(is.na(df)) * 100
+missing_percentages
+
+# Tworzenie wykresu braków danych
+missing_data <- sapply(df, function(x) sum(is.na(x)))
+col_names <- colnames(df)
+
+data <- data.frame(Column = col_names, Missing = missing_data)
+
+# Tworzenie wykresu procentowego 
+ggplot(data, aes(x = Column, y = Missing)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  geom_text(aes(label = Missing), vjust = -0.5, size = 3) +
+  theme_minimal() +
+  labs(title = "Wykres Braków Danych w Ramce Danych", x = "Kolumna", y = "Liczba braków danych") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+```{r}
+# Znalezienie kolumn z brakami danych 
+columns_with_na <- apply(df, 2, function(x) any(is.na(x)))
+
+# Wyświetlenie nazwy tych kolumn
+names(df)[columns_with_na]
+
+
+
+sum(is.na(df$gender)) # 102170
+sum(is.na(df$birth.year)) # 54175
+sum(is.na(df$start.station.id)) #21
+sum(is.na(df$stop.station.id)) #21
+sum(is.na(df$stop.time)) #7
+sum(is.na(df$start.time)) #8
+```
+
+`Ilość braków danych to 156402, znajdują się one w kolumnach rok urodzenia, płeć, rozpoczęcie podróży, zakończenie oraz id stacji początkowej i końcowej.`
+
+```{r}
+df <- na.omit(df, cols = "start.time")
+df <- na.omit(df, cols = "stop.time")
+
+# Uzupełnienie braków danych średnią 
+m <- mean(df$birth.year, na.rm = T)
+df[is.na(df$birth.year), "birth.year"] <- m
+df[is.na(df$birth.year), ]
+sum(is.na(df$birth.year)) 
+
+
+m <- round(mean(df$birth.year, na.rm = TRUE))
+df$birth.year <- ifelse(is.na(df$birth.year), as.integer(m), as.integer(df$birth.year))
+
+# Interpolacja braków danych 
+df$start.station.id <- na_interpolation(df$start.station.id, option = "stine")
+df$stop.station.id <- na_interpolation(df$start.station.id, option = "stine")
+df$birth.year <- na_interpolation(df$birth.year, option = "stine")
+
+
+```
+
+```{r}
+# Stworzenie wykresu
+ggplot(data = data.frame(variable = names(missing_percentages), missing_percentage = missing_percentages), aes(x = variable, y = missing_percentage)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(x = "Zmienna", y = "Procentowy udział brakujących danych") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+## 1.3 Utworzenie nowych kolumn
+
+`Kolumna - popularnośc tras`
+
+```{r}
+#  Liczba podróży między stacjami
+popularity.data <- df %>%
+  group_by(start.station.id, stop.station.id) %>%
+  summarise(popularity.data = n())
+
+# Łączenie popularności ze zbiorem danych
+df <- left_join(df, popularity.data, by = c("start.station.id", "stop.station.id"))
+
+```
+
+# Zapisanie danych
+
+``` {#r}
+write.csv2(df, "df.csv") # Ostatecznie w próbce jest 999990 obserwacji
+```

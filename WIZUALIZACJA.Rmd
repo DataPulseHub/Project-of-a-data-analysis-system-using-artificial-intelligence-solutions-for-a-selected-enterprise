@@ -1,0 +1,549 @@
+---
+title: "EDA"
+author: "Natalia Wilczek"
+date: "2023-10-31"
+output: html_document
+---
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+# Biblioteki
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+library(corrplot)
+library(lubridate)
+library(tidyverse)
+library(plotly)
+library(leaflet)
+library(kableExtra)
+library(cowplot) 
+library(knitr)
+library(RColorBrewer)
+```
+
+# Wczytanie danych
+
+```{r}
+df <- read.csv2("/pracadyplomowa/DANE/df.csv", header = TRUE)
+df <- subset(df, select = -X)
+df$stop.time <- as.POSIXct(df$stop.time, format = "%d.%m.%Y %H:%M")
+df$start.time <- as.POSIXct(df$start.time, format = "%d.%m.%Y %H:%M")
+```
+
+# Podstawowe statystyki
+
+```{r}
+w1 <- summary(df$trip.duration)
+w2 <- summary(df$birth.year)
+w3 <- summary(df$popularity.data)
+combined_table <- rbind(w1, w2, w3)
+kable(combined_table, format = "html", table.attr = 'style="background-color: white;"')
+
+```
+
+### Rekordy obejmujące więcej niż 1 dzień (24 godziny) i więcej niż 7 dni (jeden tydzień)
+
+```{r}
+# 1 dzień
+df %>% 
+  select(trip.duration) %>% 
+  filter(trip.duration> 86400) %>% 
+  nrow()
+
+# 7 dni
+df %>% 
+  select(trip.duration) %>% 
+  filter(trip.duration > 604800) %>% 
+  nrow()
+```
+
+**Obserwacje:**
+
+-   Rekordy obejmują więcej niż 1 dzień (24 godziny) - 169
+
+-   Rekordy obejmują więcej niż 7 dni (jeden tydzień) - 27
+
+```{r}
+df %>% 
+  pull(trip.duration) %>% 
+  log() %>% 
+  boxplot(main = "Log of Trips duration",
+          xlab = "log",medlty = 2,
+          medlwd = 2,
+          medpch = 22,
+          medcex = 2,
+          medcol = 2,
+          medbg = 1,
+          border = "darkred",
+          horizontal = TRUE,
+          frame = FALSE)
+```
+
+##### - średnia długość podróży w podziale na pory roku
+
+```{r}
+df$start.time <- ymd_hms(df$start.time)
+get_season <- function(date) {
+  month <- month(date)
+  if (month %in% c(3, 4, 5)) {
+    return("spring")
+  } else if (month %in% c(6, 7, 8)) {
+    return("summer")
+  } else if (month %in% c(9, 10, 11)) {
+    return("autumn")
+  } else {
+    return("winter")
+  }
+}
+
+df$season <- sapply(df$start.time, get_season)
+```
+
+```{r}
+result <- df %>%
+  group_by(season) %>%
+  summarise(mean_trip_duration = mean(trip.duration) / 60)
+result
+```
+
+##### - t-test
+
+```         
+H0: Średni czas trwania podróży w okresie wiosennym i zimowym nie różni się. 
+
+H1: Średnio czas trwania wycieczek w okresie wiosennym jest znacznie dłuższy niż w przypadku zimy.
+```
+
+```{r}
+trips.spring <- df[df$season == "spring", "trip.duration"]
+trips.winter <- df[df$season == "winter", "trip.duration"]
+
+t_test_result <- t.test(trips.spring, trips.winter, alternative = "greater")
+
+print(t_test_result)
+
+```
+
+# Mapy
+
+#### 2.1 Mapa stacji dokujących
+
+```{r}
+
+start.trip.info <- df %>%
+  group_by(start.station.id, start.station.name, start.station.latitude, start.station.longitude) %>%
+  summarise(count.of.starts = n())
+
+map.points.of.start <- leaflet() %>%
+  setView(lng = -74.0060, lat = 40.7307, zoom = 12) %>%
+  addTiles()
+
+icon_url <- "D:/pracadyplomowa/R/icons/map-pointer-with-bicycle-icon-vector-20895859.png" 
+
+for (point in 1:nrow(start.trip.info)) {
+  popup.content <- paste("Station:", start.trip.info$start.station.name[point], "<br>",
+                         "Count of started trips:", start.trip.info$count.of.starts[point])
+  map.points.of.start <- map.points.of.start %>%
+    addMarkers(lng = start.trip.info$start.station.longitude[point],
+               lat = start.trip.info$start.station.latitude[point],
+               popup = popup.content,
+               icon = makeIcon(iconUrl = icon_url,
+                               iconWidth = 38, iconHeight = 45))
+}
+
+
+map.points.of.start
+
+```
+
+#### 2.2 Mapa cieplna popularnych stacji
+
+```{r}
+trips_agg1 <- df %>%
+  group_by(start.station.id) %>%
+  summarize(
+    durationmin_avg = round(mean(trip.duration) / 60, 2),
+    ilosc_podrozy = n(),  # Zmiana nazwy zmiennej
+    latitude = first(start.station.latitude),
+    longitude = first(start.station.longitude),
+    station_name = first(start.station.name)
+  ) %>%
+  ungroup()  
+
+fig1 <- trips_agg1 %>%
+  plot_ly(
+    type = 'scattermapbox',
+    lat = ~latitude,
+    lon = ~longitude,
+    size = ~ilosc_podrozy,  # Zmiana nazwy zmiennej
+    color = ~ilosc_podrozy,  # Zmiana nazwy zmiennej
+    colors = "Blues",
+    opacity = 0.8,
+    hoverinfo = 'text',
+    text = ~paste('Station Name: ', station_name, '<br>',
+                  'Station ID: ', start.station.id, '<br>',
+                  'Avg Duration (mins): ', durationmin_avg, '<br>',
+                  'Trip Counts: ', ilosc_podrozy)  # Zmiana nazwy zmiennej
+  ) %>%
+  layout(
+    mapbox = list(
+      style = 'carto-positron',
+      zoom = 11.3,
+      center = list(lat = 40.7307, lon = -74.0060)
+    ),
+    title = 'Stacje Citibike (2013-2020)',
+    xaxis = list(title = 'Długość geograficzna'),
+    yaxis = list(title = 'Szerokość geograficzna'),
+    legend = list(title = 'Ilość wypożyczeń')
+  )
+
+
+fig1
+```
+
+#### 2.3 Mapa popularnych połączeń
+
+Ze względu na bardzo duży wymiar danych zwizualizowana została losowa próbka 300 obserwacji.
+
+```{r}
+
+trips_sample <- df[sample(1:nrow(df), 300),]
+
+
+trips_sorted <- trips_sample[order(trips_sample$start.time),]
+rownames(trips_sorted) <- NULL
+
+
+trips_starts <- trips_sorted[, c('start.time', 'start.station.id', 'start.station.name', 'start.station.latitude', 'start.station.longitude')]
+trips_ends <- trips_sorted[, c('stop.time', 'stop.station.id', 'stop.station.name', 'stop.station.latitude', 'stop.station.longitude')]
+
+colnames(trips_starts) <- c('time', 'id', 'name', 'lat', 'lon')
+colnames(trips_ends) <- c('time', 'id', 'name', 'lat', 'lon')
+trips_starts_ends <- rbind(trips_starts, trips_ends)
+
+library(plotly)
+
+fig2 <- plot_ly(trips_starts_ends, 
+                lat = ~lat, 
+                lon = ~lon, 
+                type = 'scattermapbox', 
+                mode = 'lines',
+                line = list(color = 'blue'),
+                opacity = 0.5) %>%
+  layout(mapbox = list(center = list(lat = 40.7307, lon = -74.0060), 
+                        zoom = 11.3, 
+                        style = 'carto-positron'),
+         hoverinfo = 'text',
+         text = ~paste('Name: ', name, '<br>Time: ', time))
+
+fig2
+
+
+```
+
+# Wizualizacje
+
+#### 2.1 Macierz korelacji
+
+```{r}
+# Wybierz tylko kolumny numeryczne
+numerical_columns <- df %>%
+  select_if(is.numeric)
+
+# Wygeneruj macierz korelacji
+correlation_matrix <- cor(numerical_columns)
+
+# Ustaw paletę kolorów
+col <- colorRampPalette(c("#003366", "#FFFFFF", "#bfa747"))
+
+# Wyświetl macierz korelacji z odpowiednimi ustawieniami
+corrplot(
+  correlation_matrix,
+  method = 'color',
+  col = col(200),
+  type = 'upper',
+  order = 'hclust',
+  addCoef.col = "black",
+  tl.col = "black",
+  tl.srt = 10,
+  diag = FALSE,
+  tl.cex = 0.5,
+  number.cex = 0.5
+)
+
+
+# Oblicz macierz korelacji
+correlationmatrix <- cor(correlation_matrix)
+
+pairs(correlationmatrix, lower.panel = panel.smooth, upper.panel = NULL,
+      diag.panel = NULL, pch = 20, col = "blue")
+
+
+```
+
+```{r}
+ggplot(data = df, aes( y =start.station.id, x = stop.station.id)) +
+geom_point() +
+geom_smooth()
+ggplot(data = df, aes( y =start.station.longitude, x = start.station.id)) +
+geom_point() +
+geom_smooth()
+ggplot(data = df, aes( y =start.station.longitude, x = stop.station.id)) +
+geom_point() +
+geom_smooth()
+ggplot(data = df, aes( y =stop.station.latitude, x = stop.station.longitude)) +
+geom_point() +
+geom_smooth()
+
+```
+
+#### 2.2 Wykres czasu trwania wypożyczeń
+
+```{r}
+options(scipen = 999)
+
+
+ggplot(data = df, aes(x = trip.duration/60)) +
+  geom_histogram(binwidth = 5, color = "white", fill = "#4C8CD5") +
+  scale_x_continuous(limits = c(0, 100), breaks = seq(0, 100, 10)) +
+  labs(x = "Czas trwania (min)", y = "Liczba wypożyczeń") +
+  ggtitle("Czas trwania wypożyczeń rowerów")+
+    theme_minimal() 
+```
+
+#### 2.3 Wykres osób które posiadają subskrybcję a jednorazowych użytkowników
+
+```{r}
+options(repr.plot.width = 20, repr.plot.height = 15)
+
+my_palette <- c("#B1CDEC", "#4C8CD5") 
+
+w <- ggplot(data = df, aes(x = user.type, y = trip.duration, color = user.type)) +
+  geom_jitter() +
+  labs(x = "Typ użytkownika", y = "Czas trwania wycieczki") +
+  scale_color_manual(values = my_palette) + 
+  theme_minimal() +
+  guides(color = guide_legend(title = "Typ użytkownika"))
+w
+```
+
+#### 2.4 Top 10 startowych doków
+
+```{r}
+top.start.station <- df %>%
+  group_by(start.station.name) %>%
+  summarize(count = n()) %>%
+  top_n(10, count)
+
+
+ggplot(top.start.station, aes(x = fct_reorder(start.station.name, count), y = count, fill = count)) +
+  geom_col() +
+  scale_fill_gradientn(colors = brewer.pal(9, "Blues")) +
+  geom_text(aes(label = count), vjust = -0.3, size = 5) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Top 10 początkowych doków", x = "Nazwa stacji", y = "Ilość") +
+  coord_flip()
+```
+
+#### 2.5 Top 10 końcowych doków
+
+```{r}
+top.stop.station <- df %>%
+  group_by(stop.station.name) %>%
+  summarize(count = n()) %>%
+  top_n(10, count)
+
+ggplot(top.stop.station, aes(x = fct_reorder(stop.station.name, count), y = count, fill = count)) +
+  geom_bar(stat = "identity") +
+  scale_fill_gradientn(colors = brewer.pal(9, "Blues")) +
+  geom_text(aes(label = count), vjust = -0.3, size = 5) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Top 10 końcowych doków", x = "Nazwa stacji", y = "Ilość") +
+  coord_flip()
+
+
+```
+
+#### 2.6 Liczba podróży według godziny i dnia tygodnia
+
+```{r}
+df <-df %>%
+  mutate(weekday = wday(as.Date(start.time), label = TRUE))
+
+df$hour <- as.numeric(format(df$start.time, "%H"))
+
+# Grupowanie i agregacja danych
+trips_agg3 <- aggregate(popularity.data ~ weekday + hour, data = df, FUN = length)
+
+
+fig3 <- plot_ly(trips_agg3, 
+                x = ~hour, 
+                y = ~popularity.data, 
+                color = ~weekday, 
+                type = 'scatter', 
+                mode = 'lines',
+                line = list(width = 3),
+                colors = c('#e6194b', '#3cb44b', '#ffe119',                     '#4363d8', '#f58231', '#911eb4', '#46f0f0'),
+                text = ~paste("Dzień tygodnia: ", weekday, "<br                 >", "Godzina: ", hour, "<br>", "Liczba odbytych                 podróży: ", popularity.data)) %>%
+  layout(title = 'Podróże według godziny, dnia tygodnia',
+         xaxis = list(title = 'Godzina dnia'),
+         yaxis = list(title = 'Liczba odbytych podróży'),
+         hovermode = 'x')
+
+fig3
+
+```
+
+#### 2.7 Liczba podróży według wieku użytkownika
+
+```{r}
+df$age <- year(Sys.Date()) - df$birth.year
+
+# Grupowanie i agregacja
+trips_agg4 <- df %>%
+  group_by(age, gender, .groups = 'drop') %>%
+  summarise(popularity.data = n()) %>%
+  filter(age < 100)
+
+
+plot_age_popularity <- ggplot(trips_agg4, aes(x = age, y = popularity.data, fill = as.factor(gender))) +
+  geom_bar(stat = "identity") +
+  labs(title = "Podróże według wieku użytkownika",
+       x = "Wiek",
+       y = "Liczba podróży",
+       fill = "Płeć") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Blues", labels = c("1" = "Mężczyzna", "2" = "Kobieta"))
+
+trips_agg5 <- df %>%
+  group_by(age, gender) %>%
+  summarise(trip.duration = n()) %>%
+  filter(age < 100)
+
+plot_age_duration <- ggplot(trips_agg5, aes(x = age, y = trip.duration, fill = as.factor(gender))) +
+  geom_bar(stat = "identity") +
+  labs(title = "Długość podróży według wieku użytkownika",
+       x = "Wiek",
+       y = "Długość podróży",
+       fill = "Płeć") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Blues", labels = c("1" = "Mężczyzna", "2" = "Kobieta"))
+
+
+
+combined_plot <- grid.arrange(plot_age_popularity, plot_age_duration, ncol = 2)
+```
+
+#### 2.8 Wykres kategorii równoległych
+
+```{r}
+
+df$age.type <- ifelse(df$age <= 25, 'Młody dorosły',
+                     ifelse(df$age < 65, 'Średni wiek',
+                            ifelse(df$age >= 65, 'Senior',no = 'Unknown')))
+
+
+df$month <- as.numeric(format(df$start.time, "%m"))
+
+df$season <- ifelse(df$month %in% c(12, 1, 2), 'Zima',
+                    ifelse(df$month %in% c(3, 4, 5), 'Wiosna',
+                           ifelse(df$month %in% c(6, 7, 8), 'Lato', 'Jesień')))
+
+df$trip.duration.minute <- round(df$trip.duration / 60, 2)
+
+df$duration.category <- ifelse(df$trip.duration.minute < 5, '< 5 min',
+                               ifelse(df$trip.duration.minute < 15, '5-15 min',
+                                      ifelse(df$trip.duration.minute < 30, '15-30 min',
+                                             ifelse(df$trip.duration.minute < 60, '30-60 min',
+                                                    ifelse(df$trip.duration.minute < 120, '1-2 godziny',
+                                                           ifelse(df$trip.duration.minute < 240, '2-4 godziny', 'ponad 4 godziny'))))))
+
+# Wykres parallel_categories
+fig5 <- plot_ly(
+  type = 'parcats',
+  dimensions = list(
+    list(label = 'Płeć', values = df$gender),
+    list(label = 'Typ użytkownika', values = df$user.type),
+    list(label = 'Kategoria Wieku', values = df$age.type),
+    list(label = 'Pora roku', values = df$season),
+    list(label = 'Kategoria trwania podróży', values = df$duration.category)
+  )
+)
+
+fig5
+
+```
+
+#### 2.9 Liczba wycieczek według typu rowerzysty i dnia tygodnia i miesiąca
+
+```{r}
+colors <- c("#92BAF7", "#808080") 
+
+# Wykres 1
+dd <- df %>%
+  mutate(weekday = wday(as.Date(start.time), label = TRUE)) %>%
+  group_by(user.type, weekday) %>%
+  summarise(number_of_rides = n(),
+            average_duration = mean(trip.duration)) %>%
+  arrange(user.type, weekday) %>%
+  ggplot(aes(x = weekday, y = number_of_rides, fill = user.type)) +
+  geom_col(position = "dodge") +
+  scale_fill_manual(values = colors) +  # Ustawienie kolorów
+  labs(title = "Liczba wycieczek według typu rowerzysty i dnia tygodnia",
+       x = "Dzień tygodnia", y = "Ilość podróży",
+       fill = "Typ rowerzysty")
+
+# Wykres 2
+dd1 <- df %>%
+  mutate(month2 = month(as.Date(start.time), label = TRUE)) %>%
+  group_by(user.type, month2) %>%
+  summarise(number_of_rides = n(),
+            average_duration = mean(trip.duration)) %>%
+  arrange(user.type, month2) %>%
+  ggplot(aes(x = month2, y = number_of_rides, fill = user.type)) +
+  geom_col(position = "dodge") +
+  scale_fill_manual(values = colors) +  # Ustawienie kolorów
+  labs(title = "Liczba wycieczek według typu rowerzysty i miesiąca",
+       x = "Miesiąc", y = "Ilość podróży",
+       fill = "Typ rowerzysty")
+
+# Wyświetlenie obu wykresów obok siebie
+grid.arrange(dd, dd1, ncol = 1)
+```
+
+#### 2.10 Średnia długość wycieczki według dnia tygodnia i miesiąca
+
+```{r}
+dd2 <- df %>%
+  mutate(weekday = wday(as.Date(start.time), label = TRUE)) %>%
+  group_by(user.type, weekday) %>%
+  summarise(number_of_rides = n(),
+            average_duration = mean(trip.duration)) %>%
+  arrange(user.type, weekday) %>%
+  ggplot(aes(x = weekday, y = average_duration, fill = user.type)) +
+  geom_col(position = "dodge") +
+  scale_fill_manual(values = colors)+
+  labs(title = "Średnia długość wycieczki według dnia tygodnia ( w sekundach)",  x = "Dzień tygodnia", y = "Średnia długość podróży",
+       fill = "Typ rowerzysty")
+
+
+dd3 <- df %>%
+  mutate(month2 = month(as.Date(start.time), label = TRUE)) %>%
+  group_by(user.type, month2) %>%
+  summarise(number_of_rides = n(),
+            average_duration = mean(trip.duration)) %>%
+  arrange(user.type, month2) %>%
+  ggplot(aes(x = month2, y = average_duration, fill = user.type)) +
+  geom_col(position = "dodge") +
+  scale_fill_manual(values = colors)+
+  labs(title = "Średnia długość wycieczki według dnia tygodnia ( w sekundach)", x = "Miesiąc", y = "Średnia długość podróży",
+       fill = "Typ rowerzysty")
+
+plot_grid(dd2, dd3, ncol = 1)
+```
+
+```{r}
+write.csv2(df, "dane_po_wizu.csv")
+```

@@ -1,0 +1,188 @@
+---
+title: "MODEL"
+subtitle: "CityBike"
+author:
+- name: Natalia Wilczek
+  affiliation: Politechnika Lubelska
+output:
+  rmdformats::downcute:
+    toc_depth: 4
+    highlight: espresso
+    theme: darkly
+    lightbox: false
+    self_contained: true
+    thumbnails: false
+    gallery: false
+    number_sections: true
+    code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Wczytanie bibliotek
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(pacman)
+library(tidyverse)
+library(forecast)
+library(rugarch)
+library(fastDummies)
+library(xts)
+library(tseries)
+library(Metrics)
+library(RColorBrewer)
+```
+
+# 1.0 Wczytanie danych
+
+```{r}
+DANE_MODEL1 <- read.csv2("/pracadyplomowa/DANE_MODEL1.csv", header = TRUE)
+
+dane <- DANE_MODEL1 %>%
+  mutate(date = as.Date(date, format = '%d.%m.%Y')) %>%
+  mutate(weekday = weekdays(date) %>% as.factor()) # Dodanie kolumny z dniem tygodnia
+dane <- dane %>%
+  mutate(season = case_when(
+    month(date) %in% c(12, 1, 2) ~ 'winter'
+    , month(date) %in% c(3, 4, 5) ~ 'spring'
+    , month(date) %in% c(6, 7, 8) ~ 'summer'
+    , month(date) %in% c(9, 10, 11) ~ 'autumn'
+  )) # Dodanie kolumny z pora roku 
+
+# Dodatnie dummy variables dla dni tygodnia oraz pór roku
+# usunięcie dwie zmienne aby uniknąć współliniowości
+
+dane <- dummy_cols(dane, select_columns = c('weekday', 'season')) %>%
+  select(-weekday_poniedziałek, -season_winter)
+
+```
+
+# 2.0 Wizualizacja
+
+### 2.1 Szereg czasowy dla zmiennej count
+
+```{r}
+ggplot(dane, aes(x = date, y = count)) +
+  labs(title = "Szereg czasowy dla zmiennej count",
+       y = "Liczba odbytych podróży",
+       x = "Data") + 
+  theme_light() +  
+  geom_line(color = '#008080')
+
+```
+
+### 2.2 Szereg czasowy dla zmiennej count (w podziale na dni tygodnia)
+
+```{r}
+ggplot(dane, aes(x = date, y = count)) +
+      labs(title = "Szereg czasowy dla zmiennej count (w podziale na dni tygodnia)",
+       y = "Liczba odbytych podróży",
+       x = "Data",
+      color = "Dzień tygodnia" ) + 
+      geom_line(aes(color = weekday))
+```
+
+### 2.3 Wykresy pudełkowe w podziale na dni tygodnia
+
+```{r}
+ggplot(dane, aes(x = weekday, y = count)) +
+      labs(title = "Wykresy pudełkowe w podziale na dni tygodnia",
+       y = "Liczba odbytych podróży",
+       x = "Dzień tygodnia") + 
+  geom_boxplot(aes(fill = weekday)) +
+  theme(legend.position = 'none')
+```
+### 2.4 Dekompozycja szeregu: trend, sezonowość, i szum
+```{r}
+# Tworzenie szeregu czasowego
+time_series <- ts(dane$count, frequency = 365)
+
+# Dekompozycja szeregu czasowego
+decomposition <- stl(time_series, s.window="periodic")
+
+
+dark_blue <- brewer.pal(9, "Blues")[9]
+
+# Wykres dekompozycji
+par(mfrow=c(4,1))
+plot(decomposition, col = c("darkblue", "darkblue", "darkblue", "darkblue"))
+
+```
+
+### 2.5 Sprawdzenie założeń 
+```{r}
+# normalność
+adf.test(time_series)
+
+par(mfrow = c(2, 2))
+# Autokorelacja
+acf_result <- acf(time_series, main = "Funkcja autokorelacji")
+# Autokorelacja cząstkowa
+pacf_result <- pacf(time_series, main = "Funkcja autokorelacji cząstkowej")
+# Korelacja krzyżowa
+cross_corr_result <- ccf(time_series, time_series, main = "Funkcja korelacji krzyżowej")
+# Sezonowość 
+seson <- seasonplot(time_series, main = "Wykres sezonalności")
+
+```
+
+
+# 3.0 Dopasowanie modelu ARIMA
+
+```{r}
+# Wybór stopni modelu na podstawie minimalizcji kryterium informacyjnego Akaike
+model = auto.arima(
+  xts(dane$count, order.by = dane$date)
+  , xreg = dane %>% select(starts_with('weekday_'), starts_with('season_')) %>% as.matrix(), seasonal = TRUE)
+```
+
+```{r}
+# Najlepszy jest model ARIMA(0, 1, 2)
+summary(model)
+```
+
+### Współczynnik determinancji R\^2
+
+```{r}
+cor(dane$count, fitted(model))^2
+```
+
+Współczynnik determinancji R\^2 wynosi 79%.
+
+# 4.0 Metryki dopasowania
+
+```{r}
+rmse(dane$count, fitted(model)) / mean(dane$count)
+mae(dane$count, fitted(model)) / mean(dane$count)
+```
+
+
+# 5.0 Diagnostyka modelu
+
+```{r}
+Acf(model$residuals)
+Box.test(model$residuals, lag = 6)
+```
+
+
+```{r}
+jarque.bera.test(model$residuals)
+```
+
+# 6.0 Wykres oryginalne dane vs dane z dopasowanego modelu
+
+```{r}
+dane$fitted <- fitted(model)
+
+dane %>%
+  pivot_longer(cols = c(2, 14), names_to = 'Variable', values_to = 'Value') %>%
+  ggplot(aes(x = date, y = Value, color = Variable)) +
+        labs(title = "Wykres oryginalne dane vs dane z dopasowanego modelu",
+       y = "Liczba odbytych podróży",
+       x = "Dzień tygodnia",
+       color = "Wartość") + 
+  geom_line()
+```
