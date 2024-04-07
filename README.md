@@ -1,4 +1,4 @@
-# Project-of-a-data-analysis-system-using-artificial-intelligence-solutions-for-a-selected-enterprise
+# Project of a data analysis system using artificial intelligence solutions for a selected enterprise
 
 The project focuses on the design of a data analysis system using artificial
 intelligence solutions to improve the service provided to a particular business. The main
